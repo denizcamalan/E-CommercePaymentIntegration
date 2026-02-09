@@ -14,7 +14,6 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\ECommercePayment.Core\ECommercePayment.Core.csproj" />
     <ProjectReference Include="..\ECommercePayment.Application\ECommercePayment.Application.csproj" />
   </ItemGroup>
 </Project>

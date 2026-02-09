@@ -7,5 +7,9 @@ namespace ECommercePayment.API.Controllers;
 [Produces("application/json")]
 public class ProductsController : ControllerBase
 {
-    
+    [HttpGet]
+    public IActionResult GetProducts()
+    {
+       throw new NotImplementedException();
+    }
 }
