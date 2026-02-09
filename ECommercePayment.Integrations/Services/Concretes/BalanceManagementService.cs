@@ -1,112 +1,175 @@
-using System.Text;
+using ECommercePayment.Domain.AppSettings;
+using ECommercePayment.Integrations.BalanceManagement.Consts;
 using ECommercePayment.Integrations.BalanceManagement.Models.Request.Balance;
 using ECommercePayment.Integrations.BalanceManagement.Models.Response;
 using ECommercePayment.Integrations.BalanceManagement.Models.Response.Balance;
 using ECommercePayment.Integrations.BalanceManagement.Models.Response.Products;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using System.Text;
 
 namespace ECommercePayment.Integrations.Services;
 
-public class BalanceManagementService(ILogger<BalanceManagementService> _logger, IHttpClientFactory _httpClientFactory) : IBalanceManagementService
+public class BalanceManagementService(ILogger<BalanceManagementService> _logger, IHttpClientFactory _httpClientFactory, BalanceManagementSettings _bMSettings) : IBalanceManagementService
 {
-    public CancelResponse CancelOrder(CancelRequest request)
+    public async Task<BaseResponse<CancelResponse>> CancelOrder(CancelRequest request)
     {
-        throw new NotImplementedException();
+        _logger.LogInformation($"CancelOrder Request : {JsonConvert.SerializeObject(request, Formatting.None)}");
+
+        BaseResponse<CancelResponse> response = await GetResponse<CancelResponse, CancelRequest>("/api/balance/cancel", HttpMethod.Post, request);
+
+        _logger.LogInformation($"CancelOrder Response : {JsonConvert.SerializeObject(response, Formatting.None)}");
+
+        return response;
     }
 
-    public CompleteResponse CompleteOrder(CompleteRequest request)
+    public async Task<BaseResponse<CompleteResponse>> CompleteOrder(CompleteRequest request)
     {
-        throw new NotImplementedException();
+        _logger.LogInformation($"CompleteOrder Request : {JsonConvert.SerializeObject(request, Formatting.None)}");
+
+        BaseResponse<CompleteResponse> response = await GetResponse<CompleteResponse, CompleteRequest>("/api/balance/complete", HttpMethod.Post, request);
+
+        _logger.LogInformation($"CompleteOrder Response : {JsonConvert.SerializeObject(response, Formatting.None)}");
+
+        return response;
     }
 
-    public ProductsResponse GetProducts()
+    public async Task<BaseResponse<ProductsResponse>> GetProducts()
     {
-        throw new NotImplementedException();
+        _logger.LogInformation($"GetProducts");
+
+        BaseResponse<ProductsResponse> response = await GetResponse<ProductsResponse>("/api/products", HttpMethod.Post);
+
+        _logger.LogInformation($"GetProducts Response : {JsonConvert.SerializeObject(response, Formatting.None)}");
+
+        return response;
     }
 
-    public UserBalanceResponse GetUserBalance(string userId)
+    public async Task<BaseResponse<UserBalanceResponse>> GetUserBalance()
     {
-        throw new NotImplementedException();
+        _logger.LogInformation($"GetUserBalance userId ");
+
+        BaseResponse<UserBalanceResponse> response = await GetResponse<UserBalanceResponse>("/api/balance", HttpMethod.Post);
+
+        _logger.LogInformation($"GetUserBalance Response : {JsonConvert.SerializeObject(response, Formatting.None)}");
+
+        return response;
     }
 
-    public PreOrderResponse PreOrder(PreOrderRequest request)
+    public async Task<BaseResponse<PreOrderResponse>> PreOrder(PreOrderRequest request)
     {
-        throw new NotImplementedException();
+        _logger.LogInformation($"PreOrder Request : {JsonConvert.SerializeObject(request, Formatting.None)}");
+
+        BaseResponse<PreOrderResponse> response = await GetResponse<PreOrderResponse, PreOrderRequest>("/api/balance/preorder", HttpMethod.Post, request);
+
+        _logger.LogInformation($"PreOrder Response : {JsonConvert.SerializeObject(response, Formatting.None)}");
+
+        return response;
     }
 
-    // private async Task<BaseResponse<Tout>> GetResponse<Tout, Tin>(string address, HttpMethod method, Tin model, string contentType = "application/json", bool isResponseConvert = true, CancellationToken cancellationToken = default)
-    // {
-    //     try
-    //     {
-    //         var payload = JsonConvert.SerializeObject(model);
-    //         var httpContent = new StringContent(payload, Encoding.UTF8, contentType);
+    #region PrivateMethods
+    private async Task<BaseResponse<Tout>> GetResponse<Tout, Tin>(string address, HttpMethod method, Tin model, string contentType = "application/json", bool isResponseConvert = true, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var baseUrl = _bMSettings.BaseUrl;
 
-    //         Uri url = new Uri($"{"url"}{address}");
+            var payload = JsonConvert.SerializeObject(model);
+            var httpContent = new StringContent(payload, Encoding.UTF8, contentType);
 
-    //         HttpRequestMessage request = new HttpRequestMessage(method, url)
-    //         {
-    //             Content = httpContent
-    //         };
+            Uri url = new Uri($"{baseUrl}{address}");
 
+            HttpRequestMessage request = new HttpRequestMessage(method, url)
+            {
+                Content = httpContent
+            };
 
-    //         HttpClient httpClient = _httpClientFactory.CreateClient();
+            HttpClient httpClient = _httpClientFactory.CreateClient();
 
-    //         HttpResponseMessage result = await httpClient.SendAsync(request, cancellationToken);
+            HttpResponseMessage result = await httpClient.SendAsync(request, cancellationToken);
 
-    //         var body = await result.Content.ReadAsStringAsync();
+            var body = await result.Content.ReadAsStringAsync();
 
-    //         var response = new BaseResponse<Tout>
-    //         {
-    //             Success = result.IsSuccessStatusCode,
-    //         };
+            var response = new BaseResponse<Tout>();
 
-    //         if (!string.IsNullOrEmpty(body))
-    //         {
-    //             if (result.IsSuccessStatusCode)
-    //             {
-    //                 if (isResponseConvert)
-    //                     response.Data = JsonConvert.DeserializeObject<Tout>(body);
-    //             }
-    //             else
-    //             {
-    //                 response.Error = result.
-    //             }
-    //         }
-    //         else if (!response.isSuccess && response.Error is null)
-    //         {
-    //             response.Error = new()
-    //             {
-    //                 HataMesajiEN = "Access error! Please, try again.",
-    //                 HataMesaji = "Erişim hatası! Tekrar deneyeniz.",
-    //                 Kod = Enums.WalletResponseCodes.HATA
-    //             };
-    //         }
+            if (!string.IsNullOrEmpty(body))
+            {
+                var deserilizeObj = JsonConvert.DeserializeObject<BaseResponse<Tout>>(body);
 
-    //         if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-    //         {
-    //             await _cacheService.Delete(CacheConsts.WALLET_TOKEN);
-    //         }
+                if (deserilizeObj is not null)
+                {
+                    response = deserilizeObj;
+                }
+            }
 
-    //         return response;
-    //     }
-    //     catch (Exception ex)
-    //     {
+            if (!result.IsSuccessStatusCode && string.IsNullOrEmpty(response.Error))
+            {
+                response.Error = result.StatusCode.ToString();
+                response.Message = ErrorMesssages.AccessError;
+            }
 
-    //         _logger.LogError($"{nameof(GetResponse)} : {ex.Message}");
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"{nameof(GetResponse)} : {ex.Message}");
 
-    //         return new WBaseResponse<Tout>
-    //         {
-    //             isSuccess = false,
-    //             StatusCode = System.Net.HttpStatusCode.BadRequest,
-    //             Error = new()
-    //             {
-    //                 HataMesajiEN = "System error! Please, try again.",
-    //                 HataMesaji = "Sistem hatası! Tekrar deneyeniz.",
-    //                 Kod = Enums.WalletResponseCodes.BILINMEYEN
-    //             }
-    //         };
-    //     }
+            return new BaseResponse<Tout>
+            {
+                Error = ErrorMesssages.InternalService,
+                Message = ex.Message
+            };
+        }
 
-    // }
+    }
+
+    private async Task<BaseResponse<Tout>> GetResponse<Tout>(string address, HttpMethod method,string contentType = "application/json", bool isResponseConvert = true, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var baseUrl = _bMSettings.BaseUrl;
+
+            Uri url = new Uri($"{baseUrl}{address}");
+
+            HttpRequestMessage request = new HttpRequestMessage(method, url);
+
+            HttpClient httpClient = _httpClientFactory.CreateClient();
+
+            HttpResponseMessage result = await httpClient.SendAsync(request, cancellationToken);
+
+            var body = await result.Content.ReadAsStringAsync();
+
+            var response = new BaseResponse<Tout>();
+
+            if (!string.IsNullOrEmpty(body))
+            {
+                var deserilizeObj = JsonConvert.DeserializeObject<BaseResponse<Tout>>(body);
+
+                if (deserilizeObj is not null)
+                {
+                    response = deserilizeObj;
+                }
+            }
+
+            if (!result.IsSuccessStatusCode && string.IsNullOrEmpty(response.Error))
+            {
+                response.Error = result.StatusCode.ToString();
+                response.Message = ErrorMesssages.AccessError;
+            }
+
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"{nameof(GetResponse)} : {ex.Message}");
+
+            return new BaseResponse<Tout>
+            {
+                Error = ErrorMesssages.InternalService,
+                Message = ex.Message
+            };
+        }
+
+    }
+    #endregion
 }

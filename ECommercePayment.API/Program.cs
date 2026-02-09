@@ -1,3 +1,4 @@
+using ECommercePayment.Domain.AppSettings;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -31,6 +32,11 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddHttpClient();
 
 builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+
+BalanceManagementSettings bMSettings = new BalanceManagementSettings();
+configuration.GetSection("BalanceManagement").Bind(bMSettings);
+
+builder.Services.AddSingleton<BalanceManagementSettings>(bMSettings);
 
 var app = builder.Build();
 
