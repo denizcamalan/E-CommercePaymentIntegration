@@ -1,4 +1,4 @@
-namespace ECommercePayment.Integrations.Models;
+namespace ECommercePayment.Integrations.BalanceManagement.Models.Response;
 
 public class BaseResponse<T> where T : class
 {

@@ -1,4 +1,4 @@
-namespace ECommercePayment.Integrations.Models.Response.Products;
+namespace ECommercePayment.Integrations.BalanceManagement.Models.Response.Products;
 
 public class ProductsResponse
 {

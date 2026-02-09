@@ -1,8 +1,11 @@
-namespace ECommercePayment.Integrations.Models.Request;
+using System.ComponentModel.DataAnnotations;
+
+namespace ECommercePayment.Integrations.BalanceManagement.Models.Request.Balance;
 
 public class PreOrderRequest
 {
-        public int Amount { get; set; }
+        [Required]
+        public decimal Amount { get; set; }
+        [Required]
         public string OrderId { get; set; } = string.Empty;
-
 }

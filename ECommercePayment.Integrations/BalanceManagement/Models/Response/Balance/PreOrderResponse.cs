@@ -1,11 +1,8 @@
-using ECommercePayment.Integrations.BalanceManagement.Models;
-
-namespace ECommercePayment.Integrations.Models.Response.Balance;
+using System.ComponentModel.DataAnnotations;
+namespace ECommercePayment.Integrations.BalanceManagement.Models.Response.Balance;
 
 public class PreOrderResponse
 {
     public OrderModel PreOrder { get; set; }
-    public UpdatedBalanceModel UpdatedBalance { get; set; }
+    public BalanceModel UpdatedBalance { get; set; }
 }
-
-

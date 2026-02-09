@@ -1,4 +1,4 @@
-namespace ECommercePayment.Domain.Enums;
+namespace ECommercePayment.Core.Enums;
 
 public enum Currency
 {

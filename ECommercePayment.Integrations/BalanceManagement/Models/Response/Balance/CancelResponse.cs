@@ -2,7 +2,7 @@ namespace ECommercePayment.Integrations.BalanceManagement.Models.Response.Balanc
 
 public class CancelResponse
 {
-    public OrderModel Order { get; set; } = default!;
+    public OrderModel Order { get; set; }
 
-    public UpdatedBalanceModel UpdatedBalance { get; set; } = default!;
+    public BalanceModel UpdatedBalance { get; set; }
 }

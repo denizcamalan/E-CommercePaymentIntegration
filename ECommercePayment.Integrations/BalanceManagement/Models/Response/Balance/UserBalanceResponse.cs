@@ -1,4 +1,4 @@
-namespace ECommercePayment.Integrations.Models.Response;
+namespace ECommercePayment.Integrations.BalanceManagement.Models.Response.Balance;
 
 public class UserBalanceResponse
 {

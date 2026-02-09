@@ -1,4 +1,20 @@
+using Serilog;
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Configuration.SetBasePath(builder.Environment.ContentRootPath)
+    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true);
+Console.WriteLine("Enviroment : " + builder.Environment.EnvironmentName);
+var configuration = builder.Configuration;
+
+var logger = new LoggerConfiguration()
+                 .ReadFrom.Configuration(configuration)
+                 .Enrich.FromLogContext()
+                 .CreateLogger();
+
+builder.Logging.ClearProviders();
+builder.Logging.AddSerilog(logger);
+
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -11,6 +27,10 @@ builder.Services.AddSwaggerGen(c =>
         Description = "Backend for e-commerce platform integrating with Balance Management service."
     });
 });
+
+builder.Services.AddHttpClient();
+
+builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 
 var app = builder.Build();
 
