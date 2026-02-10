@@ -6,6 +6,8 @@ namespace ECommercePayment.Domain.Entities
     {
         public required string OrderId { get; set; }
         public required decimal Amount { get; set; }
+        public required decimal TotallPrice { get; set; }
+        public string Currency { get; set; } = string.Empty;
         public DateTime Timestamp { get; set; }
         public OrderStatus Status { get; set; }
         public DateTime? CompletedAt { get; set; }
