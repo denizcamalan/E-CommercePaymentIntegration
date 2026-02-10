@@ -40,6 +40,8 @@ builder.Services.AddSingleton<BalanceManagementSettings>(bMSettings);
 
 var app = builder.Build();
 
+app.UseHealthChecks("/health");
+
 app.UseExceptionHandler(_ => { });
 app.UseHttpsRedirection();
 app.UseAuthorization();

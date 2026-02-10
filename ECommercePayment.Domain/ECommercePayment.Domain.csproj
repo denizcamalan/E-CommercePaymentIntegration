@@ -7,7 +7,4 @@
   <ItemGroup>
     <ProjectReference Include="..\ECommercePayment.Infrastructure\ECommercePayment.Infrastructure.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="DTOs\Request\" />
-  </ItemGroup>
 </Project>

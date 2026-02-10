@@ -10,5 +10,6 @@ namespace ECommercePayment.Domain.Entities
         public OrderStatus Status { get; set; }
         public DateTime? CompletedAt { get; set; }
         public DateTime? CancelledAt { get; set; }
+        public string CancellationReason { get; private set; }
     }
 }
