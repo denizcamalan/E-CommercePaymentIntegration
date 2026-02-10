@@ -6,12 +6,35 @@ using ECommercePayment.Integrations.BalanceManagement.Models.Response.Balance;
 using ECommercePayment.Integrations.BalanceManagement.Models.Response.Products;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Polly;
+using Polly.Retry;
+using Polly.CircuitBreaker;
 using System.Text;
 
 namespace ECommercePayment.Integrations.Services;
 
 public class BalanceManagementService(ILogger<BalanceManagementService> _logger, IHttpClientFactory _httpClientFactory, BalanceManagementSettings _bMSettings) : IBalanceManagementService
 {
+    private readonly AsyncRetryPolicy<HttpResponseMessage> _retryPolicy =
+        Policy<HttpResponseMessage>
+            .Handle<HttpRequestException>()
+            .OrResult(msg => (int)msg.StatusCode >= 500)
+            .WaitAndRetryAsync(
+                3,
+                retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)), // 2s, 4s, 8s
+                (outcome, timespan, retryCount, context) =>
+                {
+                    _logger.LogWarning("Retrying BalanceManagement request. Attempt {RetryCount}", retryCount);
+                });
+
+    private readonly AsyncCircuitBreakerPolicy<HttpResponseMessage> _circuitBreakerPolicy =
+        Policy<HttpResponseMessage>
+            .Handle<HttpRequestException>()
+            .OrResult(msg => (int)msg.StatusCode >= 500)
+            .CircuitBreakerAsync(
+                exceptionsAllowedBeforeBreaking: 5,
+                durationOfBreak: TimeSpan.FromSeconds(30));
+
     public async Task<BaseResponse<CancelResponse>> CancelOrder(CancelRequest request)
     {
         _logger.LogInformation($"CancelOrder Request : {JsonConvert.SerializeObject(request, Formatting.None)}");
@@ -86,7 +109,8 @@ public class BalanceManagementService(ILogger<BalanceManagementService> _logger,
 
             HttpClient httpClient = _httpClientFactory.CreateClient();
 
-            HttpResponseMessage result = await httpClient.SendAsync(request, cancellationToken);
+            HttpResponseMessage result = await Policy.WrapAsync(_retryPolicy, _circuitBreakerPolicy)
+                .ExecuteAsync(ct => httpClient.SendAsync(request, ct), cancellationToken);
 
             var body = await result.Content.ReadAsStringAsync();
 
@@ -109,6 +133,16 @@ public class BalanceManagementService(ILogger<BalanceManagementService> _logger,
             }
 
             return response;
+        }
+        catch (BrokenCircuitException)
+        {
+            _logger.LogError($"{nameof(GetResponse)} : Circuit breaker is open for {address}");
+
+            return new BaseResponse<Tout>
+            {
+                Error = ErrorMesssages.InternalService,
+                Message = "Balance service is temporarily unavailable. Please try again later."
+            };
         }
         catch (Exception ex)
         {
@@ -135,7 +169,8 @@ public class BalanceManagementService(ILogger<BalanceManagementService> _logger,
 
             HttpClient httpClient = _httpClientFactory.CreateClient();
 
-            HttpResponseMessage result = await httpClient.SendAsync(request, cancellationToken);
+            HttpResponseMessage result = await Policy.WrapAsync(_retryPolicy, _circuitBreakerPolicy)
+                .ExecuteAsync(ct => httpClient.SendAsync(request, ct), cancellationToken);
 
             var body = await result.Content.ReadAsStringAsync();
 
@@ -158,6 +193,16 @@ public class BalanceManagementService(ILogger<BalanceManagementService> _logger,
             }
 
             return response;
+        }
+        catch (BrokenCircuitException)
+        {
+            _logger.LogError($"{nameof(GetResponse)} : Circuit breaker is open for {address}");
+
+            return new BaseResponse<Tout>
+            {
+                Error = ErrorMesssages.InternalService,
+                Message = "Balance service is temporarily unavailable. Please try again later."
+            };
         }
         catch (Exception ex)
         {

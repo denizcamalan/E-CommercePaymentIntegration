@@ -2,6 +2,7 @@
   <ItemGroup>
     <ProjectReference Include="..\ECommercePayment.Domain\ECommercePayment.Domain.csproj" />
     <ProjectReference Include="..\ECommercePayment.Integrations\ECommercePayment.Integrations.csproj" />
+    <ProjectReference Include="..\ECommercePayment.Infrastructure\ECommercePayment.Infrastructure.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="FluentValidation" Version="12.1.1" />

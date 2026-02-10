@@ -2,7 +2,8 @@ namespace ECommercePayment.Domain.Enums;
 
 public enum OrderStatus
 {
-    Blocked, 
+    Blocked,
+    Processed,
     Completed, 
     Cancelled
 }

@@ -1,11 +1,10 @@
 using ECommercePayment.Domain.Enums;
 
-namespace ECommercePayment.Domain.DTOs.Response;
+namespace ECommercePayment.Domain.DTOs;
 
-public class ProductResponse
+public class ProductModel
 {
     public string Id { get; set; } = string.Empty;
-
     public string Name { get; set; } = string.Empty;
 
     public string Description { get; set; } = string.Empty;
@@ -16,5 +15,5 @@ public class ProductResponse
 
     public Category Category { get; set; }
 
-    public int Stock { get; set; }
+    public int Quantity { get; set; }
 }

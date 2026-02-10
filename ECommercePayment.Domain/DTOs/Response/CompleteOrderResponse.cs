@@ -11,5 +11,7 @@ public class CompleteOrderResponse
     public decimal TotalAmount { get; set; }
 
     public DateTime CompletedAt { get; set; }
+
+    public List<ProductModel> Products { get; set; } = new List<ProductModel>();
 }
 

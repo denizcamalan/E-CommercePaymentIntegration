@@ -7,5 +7,5 @@ public interface IOrderService
 {
     Task<BaseResponse<CreateOrderResponse>> CreateOrderAsync(CreateOrderRequest request, CancellationToken cancellationToken = default);
 
-    Task<BaseResponse<CompleteOrderResponse>> CompleteOrderAsync(CompleteOrderRequest request, CancellationToken cancellationToken = default);
+    Task<BaseResponse<CompleteOrderResponse>> CompleteOrderAsync(string preOrderId, CompleteOrderRequest request, CancellationToken cancellationToken = default);
 }

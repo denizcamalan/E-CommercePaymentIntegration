@@ -1,4 +1,7 @@
 using ECommercePayment.Domain.AppSettings;
+using ECommercePayment.Domain.Cache;
+using ECommercePayment.Infrastructure.Cache;
+using StackExchange.Redis;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -37,6 +40,11 @@ BalanceManagementSettings bMSettings = new BalanceManagementSettings();
 configuration.GetSection("BalanceManagement").Bind(bMSettings);
 
 builder.Services.AddSingleton<BalanceManagementSettings>(bMSettings);
+
+// Redis connection & cache service
+var redisConnectionString = configuration.GetConnectionString("Redis") ?? "localhost:6379";
+builder.Services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(redisConnectionString));
+builder.Services.AddSingleton<ICacheService, RedisCacheService>();
 
 var app = builder.Build();
 

@@ -10,9 +10,6 @@ public class CompleteOrderRequestValidator : AbstractValidator<CompleteOrderRequ
         RuleFor(x => x.CartId)
             .NotEmpty();
 
-        RuleFor(x => x.PreOrderId)
-            .NotEmpty();
-
         RuleFor(x => x.PaymentConfirmation)
             .Equal(true)
             .WithMessage("Payment must be confirmed to complete the order.");

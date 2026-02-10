@@ -1,3 +1,5 @@
+using ECommercePayment.Application.Services.Abstaract;
+using ECommercePayment.Domain.DTOs.Request;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ECommercePayment.API.Controllers;
@@ -5,19 +7,21 @@ namespace ECommercePayment.API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Produces("application/json")]
-public class OrdersController() : ControllerBase
+public class OrdersController(IOrderService _orderService) : BaseController
 {
     [HttpPost]
     [Route("create")]
-    public IActionResult CreateOrder()
+    public async Task<IActionResult> CreateOrder(CreateOrderRequest request)
     {
-        throw new NotImplementedException();
+        var response = await _orderService.CreateOrderAsync(request);
+        return ReturnHttpStatusCreated(response);
     }
 
     [HttpPost]
     [Route("{id}/complete")]
-    public IActionResult CompleteOrder(int id)
+    public async Task<IActionResult> CompleteOrder(string id, CompleteOrderRequest request)
     {
-        throw new NotImplementedException();
+        var response = await _orderService.CompleteOrderAsync(id, request);
+        return ReturnHttpStatus(response);
     }
 }
