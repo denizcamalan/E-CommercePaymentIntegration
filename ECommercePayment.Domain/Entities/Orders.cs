@@ -1,9 +1,10 @@
-﻿using ECommercePayment.Domain.Enums;
+using ECommercePayment.Domain.Enums;
 
 namespace ECommercePayment.Domain.Entities
 {
     public class Orders : BaseEntity<Guid>
     {
+        public required string UserId { get; set; }
         public required string OrderId { get; set; }
         public required decimal Amount { get; set; }
         public required decimal TotallPrice { get; set; }
