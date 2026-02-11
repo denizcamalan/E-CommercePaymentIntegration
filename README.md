@@ -153,22 +153,6 @@ Bu proje **Clean Architecture** ve **Domain-Driven Design (DDD)** prensiplerine 
 - PostgreSQL
 - Redis
 
-### Kurulum
-
-```bash
-# Bağımlılıkları yükle
-dotnet restore
-
-# Veritabanı migration'larını uygula
-dotnet ef database update --project ECommercePayment.Infrastructure --startup-project ECommercePayment.API
-
-# API'yi çalıştır
-dotnet run --project ECommercePayment.API
-
-# Scheduler'ı çalıştır (opsiyonel)
-dotnet run --project EcommercePayment.Scheduler
-```
-
 ### Yapılandırma
 
 `appsettings.json` dosyasında aşağıdaki ayarları yapılandırın:
