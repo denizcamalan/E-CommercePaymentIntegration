@@ -20,6 +20,7 @@ using ECommercePayment.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
 using ECommercePayment.API;
+using ECommercePayment.Application.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -188,6 +189,8 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+app.UseMiddleware<ExceptionMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {

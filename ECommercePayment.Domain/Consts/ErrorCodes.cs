@@ -19,4 +19,5 @@ public static class ErrorCodes
     public const string ValidationFailed = "ValidationFailed";
     public const string RateLimitExceeded = "RateLimitExceeded";
     public const string RequesterIdMissing = "RequesterIdMissing";
+    public const string RequestTimeout = "RequestTimeout";
 }
