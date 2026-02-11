@@ -6,10 +6,9 @@ namespace ECommercePayment.Infrastructure;
 
 public class EcommercePaymentDbContext : DbContext
 {
-
-    public EcommercePaymentDbContext(DbContextOptions<EcommercePaymentDbContext> options) : base(options)
+    public EcommercePaymentDbContext(DbContextOptions<EcommercePaymentDbContext> options)
+        : base(options)
     {
-
     }
 
     public DbSet<Orders> Orders { get; set; }

@@ -1,7 +1,10 @@
-using ECommercePayment.Domain.AppSettings;
+﻿using ECommercePayment.Domain.AppSettings;
 using ECommercePayment.Infrastructure.Cache;
 using StackExchange.Redis;
 using Serilog;
+using ECommercePayment.Infrastructure;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -40,10 +43,21 @@ configuration.GetSection("BalanceManagement").Bind(bMSettings);
 
 builder.Services.AddSingleton<BalanceManagementSettings>(bMSettings);
 
+
+string mainDbConnStr = configuration.GetConnectionString("PostgreSqlConnection") ?? throw new ArgumentNullException("ECommercePayment not found!");
+
+Console.WriteLine("Connection string alındı: " + mainDbConnStr);
+
+builder.Services.AddDbContext<EcommercePaymentDbContext>(options =>
+{
+    options.UseNpgsql(mainDbConnStr, m => m.MigrationsHistoryTable(tableName: HistoryRepository.DefaultTableName, schema: "DijitalAccount"));
+});
+
 // Redis connection & cache service
 var redisConnectionString = configuration.GetConnectionString("Redis") ?? "localhost:6379";
 builder.Services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(redisConnectionString));
 builder.Services.AddSingleton<ICacheService, RedisCacheService>();
+
 
 var app = builder.Build();
 
