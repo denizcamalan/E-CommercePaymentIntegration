@@ -1,6 +1,9 @@
-namespace ECommercePayment.Integrations.Models.Request.Balance;
+using System.ComponentModel.DataAnnotations;
+
+namespace ECommercePayment.Integrations.BalanceManagement.Models.Request.Balance;
 
 public class CompleteRequest
 {
-    public string OrderId { get; set; }
+    [Required]
+    public string orderId { get; set; } = string.Empty;
 }

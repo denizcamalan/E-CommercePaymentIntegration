@@ -2,4 +2,6 @@ namespace ECommercePayment.Integrations.BalanceManagement.Models.Response.Balanc
 
 public class CompleteResponse
 {
+    public OrderModel Order { get; set; }
+    public BalanceModel UpdatedBalance { get; set; }
 }

@@ -1,6 +1,6 @@
 namespace ECommercePayment.Integrations.BalanceManagement.Models;
 
-public class UpdatedBalanceModel
+public class BalanceModel
 {
     public string UserId { get; set; } = string.Empty;
 
