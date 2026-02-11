@@ -8,7 +8,7 @@ namespace ECommercePayment.API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Produces("application/json")]
-[ECommerceIdentity] // Bearer Authentication gerekiyor
+[ECommerceIdentity] 
 public class OrdersController(IOrderService _orderService) : BaseController
 {
     [HttpPost]

@@ -6,7 +6,7 @@ namespace ECommercePayment.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[ECommerceIdentity] // Bearer Authentication gerekiyor
+[ECommerceIdentity]
 public class ProductsController(IProductService _productService) : BaseController
 {
     [HttpGet]

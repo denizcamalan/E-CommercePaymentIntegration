@@ -18,6 +18,8 @@ using ECommercePayment.Domain.DTOs.Response;
 using ECommercePayment.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
+using ECommercePayment.API;
+using ECommercePayment.Application.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -70,7 +72,7 @@ builder.Services.AddSwaggerGen(c =>
     {
         Title = "E-Commerce Payment API",
         Version = "v1",
-        Description = "Backend for e-commerce platform integrating with Balance Management service."
+        Description = "Backend for e-commerce platform integrating with Balance Management service. "
     });
 
     // Swagger'a Bearer Authentication ekle
@@ -176,6 +178,9 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+app.UseMiddleware<ExceptionMiddleware>();
+app.UseMiddleware<LoggingMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
