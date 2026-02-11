@@ -5,5 +5,5 @@ namespace ECommercePayment.Integrations.BalanceManagement.Models.Request.Balance
 public class CompleteRequest
 {
     [Required]
-    public string OrderId { get; set; } = string.Empty;
+    public string orderId { get; set; } = string.Empty;
 }

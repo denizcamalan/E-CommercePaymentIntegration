@@ -1,11 +1,14 @@
 using ECommercePayment.Application.Services.Abstaract;
+using ECommercePayment.Domain.Consts;
 using ECommercePayment.Domain.DTOs;
 using ECommercePayment.Domain.DTOs.Request;
 using ECommercePayment.Domain.DTOs.Response;
 using ECommercePayment.Domain.Entities;
 using ECommercePayment.Domain.Enums;
+using ECommercePayment.Infrastructure.Cache;
 using ECommercePayment.Infrastructure.UOW;
 using ECommercePayment.Integrations.BalanceManagement.Models.Request.Balance;
+using ECommercePayment.Integrations.BalanceManagement.Models.Response.Balance;
 using ECommercePayment.Integrations.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -17,7 +20,7 @@ public class OrderService(
     IBalanceManagementService _balanceManagementService,
     IProductService _productService,
     ILogger<OrderService> _logger,
-    IUOW _uow) : IOrderService
+    IUOW _uow, ICacheService _cacheService) : IOrderService
 {
     public async Task<BaseResponse<CreateOrderResponse>> CreateOrderAsync(CreateOrderRequest request, CancellationToken cancellationToken = default)
     {
@@ -25,9 +28,9 @@ public class OrderService(
 
         try
         {
-            var productsResponse = await _productService.GetProductsAsync(cancellationToken);
+            var productsResponse = await _cacheService.GetAsync<List<ProductResponse>>(CacheKeys.ProductsCacheKey);
 
-            if (productsResponse.Data is null || productsResponse.Data.Count == 0)
+            if (productsResponse is null || productsResponse.Count == 0)
             {
                 response.ErrorData = new BaseErrorResponse
                 {
@@ -43,7 +46,7 @@ public class OrderService(
                 return response;
             }
 
-            var selectedProducts = productsResponse.Data.Where(x => request.SelectedProducts.Any(p => p.ProductId == x.Id)).ToList();
+            var selectedProducts = productsResponse.Where(x => request.SelectedProducts.Any(p => p.ProductId == x.Id)).ToList();
 
             if (selectedProducts.Count == 0)
             {
@@ -79,25 +82,45 @@ public class OrderService(
 
             var totalPrice = selectedProducts.Sum(p => p.Price * request.SelectedProducts.First(x => x.ProductId == p.Id).Quantity);
 
-            var balanceResponse = await _balanceManagementService.GetUserBalance();
+            ECommercePayment.Integrations.BalanceManagement.Models.Response.BaseResponse<UserBalanceResponse> balanceResponse = new ECommercePayment.Integrations.BalanceManagement.Models.Response.BaseResponse<UserBalanceResponse>();
 
-            if (balanceResponse.Success == true && balanceResponse.Data is not null)
+            balanceResponse.Data = await _cacheService.GetAsync<UserBalanceResponse>(CacheKeys.UserInfo);
+
+            if (balanceResponse.Data is null)
             {
-                if (balanceResponse.Data.AvailableBalance < totalPrice)
+                balanceResponse = await _balanceManagementService.GetUserBalance();
+
+                if (balanceResponse.Success == false && balanceResponse.Data is null)
                 {
                     response.ErrorData = new BaseErrorResponse
                     {
                         timestamp = DateTime.UtcNow,
-                        title = "Insufficient balance",
-                        message = "User does not have enough balance to create preorder.",
-                        errorCode = ErrorCodes.InsufficientBalance,
-                        httpCode = HttpStatusCode.BadRequest,
-                        httpMessage = HttpStatusCode.BadRequest.ToString(),
+                        title = "Balance service error",
+                        message = balanceResponse.Message,
+                        errorCode = balanceResponse.Error ?? string.Empty,
+                        httpCode = HttpStatusCode.BadGateway,
+                        httpMessage = HttpStatusCode.BadGateway.ToString(),
                         path = "/api/orders/create"
                     };
 
                     return response;
                 }
+            }
+
+            if (balanceResponse.Data.AvailableBalance < totalPrice)
+            {
+                response.ErrorData = new BaseErrorResponse
+                {
+                    timestamp = DateTime.UtcNow,
+                    title = "Insufficient balance",
+                    message = "User does not have enough balance to create preorder.",
+                    errorCode = ErrorCodes.InsufficientBalance,
+                    httpCode = HttpStatusCode.BadRequest,
+                    httpMessage = HttpStatusCode.BadRequest.ToString(),
+                    path = "/api/orders/create"
+                };
+
+                return response;
             }
 
             Guid orderId = Guid.NewGuid();
@@ -113,25 +136,39 @@ public class OrderService(
                 Created = DateTime.UtcNow,
                 CreatedBy = balanceResponse.Data.UserId,
                 Status = DbStatus.ACTIVE,
-                OrderedProducts = selectedProducts.Select(p => new OrderedProducts
+            };
+
+            int quantity = 0;
+
+            var orderedProducts = selectedProducts.Select(p =>
+            {
+                quantity = request.SelectedProducts.First(x => x.ProductId == p.Id).Quantity;
+
+                return new OrderedProducts
                 {
+                    Id = Guid.NewGuid(),
+                    OrderId = orderId,
                     ProductId = p.Id,
                     Name = p.Name,
                     Price = p.Price,
                     Description = p.Description,
                     Category = p.Category,
                     Currency = p.Currency,
-                    Quantity = request.SelectedProducts.First(x => x.ProductId == p.Id).Quantity,
-                    OrderId = orderId
-                }).ToList()
-            };
+                    Quantity = quantity,
+                    Created = DateTime.UtcNow,
+                    CreatedBy = balanceResponse.Data.UserId,
+                    Status = DbStatus.ACTIVE
+                };
+            }).ToList();
 
             await _uow.DbContext.Orders.AddAsync(order, cancellationToken);
 
+            await _uow.DbContext.OrderedProducts.AddRangeAsync(orderedProducts, cancellationToken);
+
             var preOrderRequest = new PreOrderRequest
             {
-                Amount = totalPrice,
-                OrderId = orderId.ToString()
+                amount = quantity,
+                orderId = orderId.ToString()
             };
 
             var preOrderResponse = await _balanceManagementService.PreOrder(preOrderRequest);
@@ -151,21 +188,34 @@ public class OrderService(
 
                 return response;
             }
+            else if (preOrderResponse.Data is null)
+            {
+                response.ErrorData = new BaseErrorResponse
+                {
+                    timestamp = DateTime.UtcNow,
+                    title = "PreOrder service error",
+                    message = "PreOrder service returned null data.",
+                    errorCode = ErrorCodes.InternalError,
+                    httpCode = HttpStatusCode.InternalServerError,
+                    httpMessage = HttpStatusCode.InternalServerError.ToString(),
+                    path = "/api/orders/create"
+                };
 
-            await _productService.RefreshProductsCacheAsync(cancellationToken);
-
-            await _uow.SaveChangesAsync(cancellationToken);
+                return response;
+            }
 
             var preOrder = preOrderResponse.Data.PreOrder;
             var balance = preOrderResponse.Data.UpdatedBalance;
 
+            await _uow.SaveChangesAsync(cancellationToken);
+            
             response.Data = new CreateOrderResponse
             {
                 PreOrderId = preOrder.OrderId,
                 Status = OrderStatus.Blocked,
                 TotalAmount = preOrder.Amount,
                 ExpiresAt = DateTime.UtcNow.AddMinutes(15),
-                Products = order.OrderedProducts.Select(p => new ProductModel
+                Products = orderedProducts.Select(p => new ProductModel
                 {
                     Id = p.ProductId,
                     Name = p.Name,
@@ -204,74 +254,47 @@ public class OrderService(
 
         try
         {
-            var order = await _uow.DbContext.Orders.FirstOrDefaultAsync(o => o.Id == Guid.Parse(preOrderId.ToString()), cancellationToken);
+            var order = await _uow.DbContext.Orders.Include(o => o.OrderedProducts).FirstOrDefaultAsync(o => o.Id == Guid.Parse(preOrderId.ToString()), cancellationToken);
 
-            var balanceResponse = await _balanceManagementService.GetUserBalance();
+            ECommercePayment.Integrations.BalanceManagement.Models.Response.BaseResponse<UserBalanceResponse> balanceResponse = new ECommercePayment.Integrations.BalanceManagement.Models.Response.BaseResponse<UserBalanceResponse>();
 
-            if (balanceResponse.Success == true && balanceResponse.Data is not null)
+            balanceResponse.Data = await _cacheService.GetAsync<UserBalanceResponse>(CacheKeys.UserInfo);
+
+            if (balanceResponse.Data is null)
             {
-                if (balanceResponse.Data.AvailableBalance < order.TotallPrice)
+                balanceResponse = await _balanceManagementService.GetUserBalance();
+
+                if (balanceResponse.Success == false && balanceResponse.Data is null)
                 {
                     response.ErrorData = new BaseErrorResponse
                     {
                         timestamp = DateTime.UtcNow,
-                        title = "Insufficient balance",
-                        message = "User does not have enough balance to create preorder.",
-                        errorCode = ErrorCodes.InsufficientBalance,
-                        httpCode = HttpStatusCode.BadRequest,
-                        httpMessage = HttpStatusCode.BadRequest.ToString(),
+                        title = "Balance service error",
+                        message = balanceResponse.Message,
+                        errorCode = balanceResponse.Error ?? string.Empty,
+                        httpCode = HttpStatusCode.BadGateway,
+                        httpMessage = HttpStatusCode.BadGateway.ToString(),
                         path = "/api/orders/create"
                     };
-
-                    var canceledResponse = await _balanceManagementService.CancelOrder(new CancelRequest { OrderId = preOrderId });
-
-                    if (canceledResponse.Success == false)
-                    {
-                        _logger.LogError("Failed to cancel order in Balance service for orderId: {OrderId}", preOrderId);
-                        response.ErrorData = new BaseErrorResponse
-                        {
-                            timestamp = DateTime.UtcNow,
-                            title = "Cancel order failed",
-                            message = "Failed to cancel order in Balance service.",
-                            errorCode = ErrorCodes.CancelOrderFailed,
-                            httpCode = HttpStatusCode.BadRequest,
-                            httpMessage = HttpStatusCode.BadRequest.ToString(),
-                            path = "/api/orders/create"
-                        };
-                    }
-
-                    order.OrderStatus = OrderStatus.Cancelled;
-                    order.Modified = DateTime.UtcNow;
-                    order.ModifiedBy = balanceResponse.Data.UserId;
-                    order.Timestamp = DateTime.UtcNow;
-
-                    _uow.DbContext.Orders.Update(order);
-
-                    await _uow.SaveChangesAsync(cancellationToken);
-
-                    await _productService.RefreshProductsCacheAsync(cancellationToken);
 
                     return response;
                 }
             }
 
-            var productsResponse = await _productService.GetProductsAsync(cancellationToken);
-
-            if (productsResponse.Data is null || productsResponse.Data.Count == 0)
+            if (balanceResponse.Data.AvailableBalance < order.TotallPrice)
             {
                 response.ErrorData = new BaseErrorResponse
                 {
                     timestamp = DateTime.UtcNow,
-                    title = "Product not found",
-                    message = "No products available.",
-                    errorCode = ErrorCodes.NotFound,
+                    title = "Insufficient balance",
+                    message = "User does not have enough balance to create preorder.",
+                    errorCode = ErrorCodes.InsufficientBalance,
                     httpCode = HttpStatusCode.BadRequest,
                     httpMessage = HttpStatusCode.BadRequest.ToString(),
                     path = "/api/orders/create"
                 };
 
-
-                var canceledResponse = await _balanceManagementService.CancelOrder(new CancelRequest { OrderId = preOrderId });
+                var canceledResponse = await _balanceManagementService.CancelOrder(new CancelRequest { orderId = preOrderId });
 
                 if (canceledResponse.Success == false)
                 {
@@ -289,6 +312,7 @@ public class OrderService(
                 }
 
                 order.OrderStatus = OrderStatus.Cancelled;
+                order.CancellationReason = "User has insufficient balance.";
                 order.Modified = DateTime.UtcNow;
                 order.ModifiedBy = balanceResponse.Data.UserId;
                 order.Timestamp = DateTime.UtcNow;
@@ -302,7 +326,68 @@ public class OrderService(
                 return response;
             }
 
-            var selectedProducts = productsResponse.Data.Where(x => order.OrderedProducts.Any(p => p.ProductId == x.Id)).ToList();
+            var productsResponse = await _cacheService.GetAsync<List<ProductResponse>>(CacheKeys.ProductsCacheKey);
+
+            if (productsResponse is null || productsResponse.Count == 0)
+            {
+                response.ErrorData = new BaseErrorResponse
+                {
+                    timestamp = DateTime.UtcNow,
+                    title = "Product not found",
+                    message = "No products available.",
+                    errorCode = ErrorCodes.NotFound,
+                    httpCode = HttpStatusCode.BadRequest,
+                    httpMessage = HttpStatusCode.BadRequest.ToString(),
+                    path = "/api/orders/create"
+                };
+
+                return response;
+            }
+
+            if (productsResponse is null || productsResponse.Count == 0)
+            {
+                response.ErrorData = new BaseErrorResponse
+                {
+                    timestamp = DateTime.UtcNow,
+                    title = "Product not found",
+                    message = "No products available.",
+                    errorCode = ErrorCodes.NotFound,
+                    httpCode = HttpStatusCode.BadRequest,
+                    httpMessage = HttpStatusCode.BadRequest.ToString(),
+                    path = "/api/orders/create"
+                };
+
+                var canceledResponse = await _balanceManagementService.CancelOrder(new CancelRequest { orderId = preOrderId });
+
+                if (canceledResponse.Success == false)
+                {
+                    _logger.LogError("Failed to cancel order in Balance service for orderId: {OrderId}", preOrderId);
+                    response.ErrorData = new BaseErrorResponse
+                    {
+                        timestamp = DateTime.UtcNow,
+                        title = "Cancel order failed",
+                        message = "Failed to cancel order in Balance service.",
+                        errorCode = ErrorCodes.CancelOrderFailed,
+                        httpCode = HttpStatusCode.BadRequest,
+                        httpMessage = HttpStatusCode.BadRequest.ToString(),
+                        path = "/api/orders/create"
+                    };
+                }
+
+                order.OrderStatus = OrderStatus.Cancelled;
+                order.CancellationReason = "Failed to retrieve products from cache while completing order.";
+                order.Modified = DateTime.UtcNow;
+                order.ModifiedBy = balanceResponse.Data.UserId;
+                order.Timestamp = DateTime.UtcNow;
+
+                _uow.DbContext.Orders.Update(order);
+
+                await _uow.SaveChangesAsync(cancellationToken);
+
+                return response;
+            }
+
+            var selectedProducts = productsResponse.Where(x => order.OrderedProducts.Any(p => p.ProductId == x.Id)).ToList();
 
             if (selectedProducts.Count == 0)
             {
@@ -317,7 +402,7 @@ public class OrderService(
                     path = "/api/orders/create"
                 };
 
-                var canceledResponse = await _balanceManagementService.CancelOrder(new CancelRequest { OrderId = preOrderId });
+                var canceledResponse = await _balanceManagementService.CancelOrder(new CancelRequest { orderId = preOrderId });
 
                 if (canceledResponse.Success == false)
                 {
@@ -335,6 +420,7 @@ public class OrderService(
                 }
 
                 order.OrderStatus = OrderStatus.Cancelled;
+                order.CancellationReason = "Ordered products not found in product list.";
                 order.Modified = DateTime.UtcNow;
                 order.ModifiedBy = balanceResponse.Data.UserId;
                 order.Timestamp = DateTime.UtcNow;
@@ -342,8 +428,6 @@ public class OrderService(
                 _uow.DbContext.Orders.Update(order);
 
                 await _uow.SaveChangesAsync(cancellationToken);
-
-                await _productService.RefreshProductsCacheAsync(cancellationToken);
 
                 return response;
             }
@@ -361,7 +445,7 @@ public class OrderService(
                     path = "/api/orders/create"
                 };
 
-                var canceledResponse = await _balanceManagementService.CancelOrder(new CancelRequest { OrderId = preOrderId });
+                var canceledResponse = await _balanceManagementService.CancelOrder(new CancelRequest { orderId = preOrderId });
 
                 if (canceledResponse.Success == false)
                 {
@@ -379,6 +463,7 @@ public class OrderService(
                 }
 
                 order.OrderStatus = OrderStatus.Cancelled;
+                order.CancellationReason = "Insufficient stock";
                 order.Modified = DateTime.UtcNow;
                 order.ModifiedBy = balanceResponse.Data.UserId;
                 order.Timestamp = DateTime.UtcNow;
@@ -387,14 +472,12 @@ public class OrderService(
 
                 await _uow.SaveChangesAsync(cancellationToken);
 
-                await _productService.RefreshProductsCacheAsync(cancellationToken);
-
                 return response;
             }
 
             var completeRequest = new CompleteRequest
             {
-                OrderId = preOrderId,
+                orderId = preOrderId,
             };
 
             var completeOrderResponse = await _balanceManagementService.CompleteOrder(completeRequest);
@@ -407,12 +490,12 @@ public class OrderService(
                     title = "CompleteOrder service error",
                     message = completeOrderResponse.Message,
                     errorCode = completeOrderResponse.Error ?? string.Empty,
-                    httpCode = HttpStatusCode.BadGateway,
-                    httpMessage = HttpStatusCode.BadGateway.ToString(),
+                    httpCode = HttpStatusCode.BadRequest,
+                    httpMessage = HttpStatusCode.BadRequest.ToString(),
                     path = "/api/orders/complete"
                 };
 
-                var canceledResponse = await _balanceManagementService.CancelOrder(new CancelRequest { OrderId = preOrderId });
+                var canceledResponse = await _balanceManagementService.CancelOrder(new CancelRequest { orderId = preOrderId });
 
                 if (canceledResponse.Success == false)
                 {
@@ -430,6 +513,7 @@ public class OrderService(
                 }
 
                 order.OrderStatus = OrderStatus.Cancelled;
+                order.CancellationReason = "Failed to complete order with Balance service.";
                 order.Modified = DateTime.UtcNow;
                 order.ModifiedBy = balanceResponse.Data.UserId;
                 order.Timestamp = DateTime.UtcNow;
@@ -438,12 +522,10 @@ public class OrderService(
 
                 await _uow.SaveChangesAsync(cancellationToken);
 
-                await _productService.RefreshProductsCacheAsync(cancellationToken);
-
                 return response;
             }
 
-            if (completeOrderResponse.Data.Order.Status.ToString() == OrderStatus.Completed.ToString())
+            if (order.OrderStatus == OrderStatus.Completed)
             {
                 response.ErrorData = new BaseErrorResponse
                 {
@@ -457,7 +539,7 @@ public class OrderService(
                 };
 
 
-                var canceledResponse = await _balanceManagementService.CancelOrder(new CancelRequest { OrderId = preOrderId });
+                var canceledResponse = await _balanceManagementService.CancelOrder(new CancelRequest { orderId = preOrderId });
 
                 if (canceledResponse.Success == false)
                 {
@@ -475,6 +557,7 @@ public class OrderService(
                 }
 
                 order.OrderStatus = OrderStatus.Cancelled;
+                order.CancellationReason = "Order was already completed in Balance service.";
                 order.Modified = DateTime.UtcNow;
                 order.ModifiedBy = balanceResponse.Data.UserId;
                 order.Timestamp = DateTime.UtcNow;
@@ -482,8 +565,6 @@ public class OrderService(
                 _uow.DbContext.Orders.Update(order);
 
                 await _uow.SaveChangesAsync(cancellationToken);
-
-                await _productService.RefreshProductsCacheAsync(cancellationToken);
 
                 return response;
             }
@@ -515,9 +596,6 @@ public class OrderService(
                     Quantity = p.Quantity
                 }).ToList()
             };
-
-            // cache’i güncelle
-            await _productService.RefreshProductsCacheAsync(cancellationToken);
 
             return response;
         }
