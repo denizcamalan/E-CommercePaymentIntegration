@@ -43,14 +43,21 @@ configuration.GetSection("BalanceManagement").Bind(bMSettings);
 
 builder.Services.AddSingleton<BalanceManagementSettings>(bMSettings);
 
-
 string mainDbConnStr = configuration.GetConnectionString("PostgreSqlConnection") ?? throw new ArgumentNullException("ECommercePayment not found!");
 
 Console.WriteLine("Connection string alındı: " + mainDbConnStr);
 
 builder.Services.AddDbContext<EcommercePaymentDbContext>(options =>
 {
-    options.UseNpgsql(mainDbConnStr, m => m.MigrationsHistoryTable(tableName: HistoryRepository.DefaultTableName, schema: "DijitalAccount"));
+    options.UseNpgsql(mainDbConnStr, npgsqlOptions =>
+    {
+        npgsqlOptions.MigrationsAssembly(typeof(EcommercePaymentDbContext).Assembly.FullName);
+        npgsqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 5,
+            maxRetryDelay: TimeSpan.FromSeconds(10),
+            errorCodesToAdd: null);
+        npgsqlOptions.MigrationsHistoryTable(tableName: HistoryRepository.DefaultTableName, schema: "OrderTable");
+    });
 });
 
 // Redis connection & cache service
@@ -58,8 +65,11 @@ var redisConnectionString = configuration.GetConnectionString("Redis") ?? "local
 builder.Services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(redisConnectionString));
 builder.Services.AddSingleton<ICacheService, RedisCacheService>();
 
-
 var app = builder.Build();
+
+using var scope = app.Services.CreateScope();
+var dbFactory = scope.ServiceProvider.GetRequiredService<EcommercePaymentDbContext>();
+var db = dbFactory.Database;
 
 app.UseHealthChecks("/health");
 
