@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ECommercePayment.Infrastructure.Migrations
 {
     [DbContext(typeof(EcommercePaymentDbContext))]
-    [Migration("20260211094434_initMigrate")]
+    [Migration("20260211095407_initMigrate")]
     partial class initMigrate
     {
         /// <inheritdoc />
@@ -133,7 +133,7 @@ namespace ECommercePayment.Infrastructure.Migrations
 
                     b.HasIndex("OrderId");
 
-                    b.ToTable("OrderedProducts", "OrderProduct");
+                    b.ToTable("OrderedProducts", "Order");
                 });
 
             modelBuilder.Entity("ECommercePayment.Domain.Entities.Orders", b =>

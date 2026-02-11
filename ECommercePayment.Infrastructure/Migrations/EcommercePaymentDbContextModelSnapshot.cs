@@ -130,7 +130,7 @@ namespace ECommercePayment.Infrastructure.Migrations
 
                     b.HasIndex("OrderId");
 
-                    b.ToTable("OrderedProducts", "OrderProduct");
+                    b.ToTable("OrderedProducts", "Order");
                 });
 
             modelBuilder.Entity("ECommercePayment.Domain.Entities.Orders", b =>

@@ -5,6 +5,10 @@ using Serilog;
 using ECommercePayment.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Migrations;
+using ECommercePayment.Integrations.Services;
+using ECommercePayment.Application.Services.Concreate;
+using ECommercePayment.Application.Services.Abstaract;
+using ECommercePayment.Infrastructure.UOW;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -36,6 +40,11 @@ builder.Services.AddSwaggerGen(c =>
 
 builder.Services.AddHttpClient();
 
+builder.Services.AddScoped<IBalanceManagementService, BalanceManagementService>();
+builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<IOrderService, OrderService>();
+builder.Services.AddScoped<IUOW, UOW>();
+
 builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 
 BalanceManagementSettings bMSettings = new BalanceManagementSettings();
@@ -45,7 +54,7 @@ builder.Services.AddSingleton<BalanceManagementSettings>(bMSettings);
 
 string mainDbConnStr = configuration.GetConnectionString("PostgreSqlConnection") ?? throw new ArgumentNullException("ECommercePayment not found!");
 
-Console.WriteLine("Connection string alındı: " + mainDbConnStr);
+Console.WriteLine("Connection string: " + mainDbConnStr);
 
 builder.Services.AddDbContext<EcommercePaymentDbContext>(options =>
 {
@@ -65,11 +74,9 @@ var redisConnectionString = configuration.GetConnectionString("Redis") ?? "local
 builder.Services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(redisConnectionString));
 builder.Services.AddSingleton<ICacheService, RedisCacheService>();
 
-var app = builder.Build();
+builder.Services.AddHealthChecks();
 
-using var scope = app.Services.CreateScope();
-var dbFactory = scope.ServiceProvider.GetRequiredService<EcommercePaymentDbContext>();
-var db = dbFactory.Database;
+var app = builder.Build();
 
 app.UseHealthChecks("/health");
 

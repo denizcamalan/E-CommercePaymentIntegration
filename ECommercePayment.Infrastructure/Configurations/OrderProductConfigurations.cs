@@ -8,6 +8,6 @@ public class OrderProductConfigurations : IEntityTypeConfiguration<OrderedProduc
 {
     public void Configure(EntityTypeBuilder<OrderedProducts> builder)
     {
-        builder.ToTable(nameof(OrderedProducts), "OrderProduct");
+        builder.ToTable(nameof(OrderedProducts), "Order");
     }
 }

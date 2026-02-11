@@ -12,9 +12,6 @@ namespace ECommercePayment.Infrastructure.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.EnsureSchema(
-                name: "OrderProduct");
-
-            migrationBuilder.EnsureSchema(
                 name: "Order");
 
             migrationBuilder.CreateTable(
@@ -68,7 +65,7 @@ namespace ECommercePayment.Infrastructure.Migrations
 
             migrationBuilder.CreateTable(
                 name: "OrderedProducts",
-                schema: "OrderProduct",
+                schema: "Order",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -102,7 +99,7 @@ namespace ECommercePayment.Infrastructure.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "IX_OrderedProducts_OrderId",
-                schema: "OrderProduct",
+                schema: "Order",
                 table: "OrderedProducts",
                 column: "OrderId");
         }
@@ -115,7 +112,7 @@ namespace ECommercePayment.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "OrderedProducts",
-                schema: "OrderProduct");
+                schema: "Order");
 
             migrationBuilder.DropTable(
                 name: "Orders",
