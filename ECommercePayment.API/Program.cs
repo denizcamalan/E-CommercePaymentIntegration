@@ -10,6 +10,7 @@ using ECommercePayment.Application.Services.Concreate;
 using ECommercePayment.Application.Services.Abstaract;
 using ECommercePayment.Infrastructure.UOW;
 using ECommercePayment.Application.Services.Identity;
+using ECommercePayment.Application.Services.RateLimit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
@@ -18,6 +19,7 @@ using ECommercePayment.Domain.DTOs.Response;
 using ECommercePayment.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
+using ECommercePayment.API;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -70,7 +72,8 @@ builder.Services.AddSwaggerGen(c =>
     {
         Title = "E-Commerce Payment API",
         Version = "v1",
-        Description = "Backend for e-commerce platform integrating with Balance Management service."
+        Description = "Backend for e-commerce platform integrating with Balance Management service. " +
+                      "Requires Bearer Authentication and X-Requester-Id header for rate limiting."
     });
 
     // Swagger'a Bearer Authentication ekle
@@ -97,6 +100,9 @@ builder.Services.AddSwaggerGen(c =>
             Array.Empty<string>()
         }
     });
+
+    // X-Requester-Id header için global parameter ekle
+    c.OperationFilter<RequesterIdHeaderFilter>();
 });
 
 builder.Services.AddHttpClient();
@@ -105,6 +111,7 @@ builder.Services.AddScoped<IBalanceManagementService, BalanceManagementService>(
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IECommerceIdentityService, ECommerceIdentityService>();
+builder.Services.AddScoped<IRateLimitService, RateLimitService>();
 builder.Services.AddScoped<IUOW, UOW>();
 
 builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
@@ -118,6 +125,11 @@ builder.Services.AddSingleton<BalanceManagementSettings>(bMSettings);
 JwtSettings jwtSettings = new JwtSettings();
 configuration.GetSection("JwtSettings").Bind(jwtSettings);
 builder.Services.AddSingleton<JwtSettings>(jwtSettings);
+
+// Rate Limit Settings
+RateLimitSettings rateLimitSettings = new RateLimitSettings();
+configuration.GetSection("RateLimitSettings").Bind(rateLimitSettings);
+builder.Services.AddSingleton<RateLimitSettings>(rateLimitSettings);
 
 // JWT Authentication
 var key = Encoding.UTF8.GetBytes(jwtSettings.Secret);

@@ -1,12 +1,14 @@
 using ECommercePayment.Application.Services.Abstaract;
 using ECommercePayment.Application.Services.Identity;
+using ECommercePayment.Application.Services.RateLimit;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ECommercePayment.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[ECommerceIdentity] // Bearer Authentication gerekiyor
+[ECommerceIdentity]
+[RequesterId] 
 public class ProductsController(IProductService _productService) : BaseController
 {
     [HttpGet]
