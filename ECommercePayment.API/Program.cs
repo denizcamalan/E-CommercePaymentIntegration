@@ -1,5 +1,4 @@
 using ECommercePayment.Domain.AppSettings;
-using ECommercePayment.Domain.Cache;
 using ECommercePayment.Infrastructure.Cache;
 using StackExchange.Redis;
 using Serilog;

@@ -32,7 +32,7 @@ public class BalanceManagementService(ILogger<BalanceManagementService> _logger,
             .Handle<HttpRequestException>()
             .OrResult(msg => (int)msg.StatusCode >= 500)
             .CircuitBreakerAsync(
-                exceptionsAllowedBeforeBreaking: 5,
+                5,
                 durationOfBreak: TimeSpan.FromSeconds(30));
 
     public async Task<BaseResponse<CancelResponse>> CancelOrder(CancelRequest request)

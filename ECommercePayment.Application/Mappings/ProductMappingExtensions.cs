@@ -1,4 +1,5 @@
 using ECommercePayment.Domain.DTOs.Response;
+using ECommercePayment.Domain.Enums;
 using ECommercePayment.Integrations.BalanceManagement.Models.Response.Products;
 
 namespace ECommercePayment.Application.Mappings;
@@ -12,8 +13,8 @@ public static class ProductMappingExtensions
             Name = source.Name,
             Description = source.Description,
             Price = source.Price,
-            Currency = source.Currency,
-            Category = source.Category,
+            Currency = Enum.TryParse<Currency>(source.Currency, true, out var currency) ? currency : Currency.TRY,
+            Category = Enum.TryParse<Category>(source.Category, true, out var category) ? category : Category.ELECTRONICS,
             Stock = source.Stock
         };
 }
