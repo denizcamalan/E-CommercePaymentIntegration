@@ -34,11 +34,11 @@ public class BalanceManagementService(ILogger<BalanceManagementService> _logger,
         return response;
     }
 
-    public async Task<BaseResponse<ProductsResponse>> GetProducts()
+    public async Task<BaseResponse<List<ProductsResponse>>> GetProducts()
     {
         _logger.LogInformation($"GetProducts");
 
-        BaseResponse<ProductsResponse> response = await GetResponse<ProductsResponse>("/api/products", HttpMethod.Post);
+        BaseResponse<List<ProductsResponse>> response = await GetResponse<List<ProductsResponse>>("/api/products", HttpMethod.Get);
 
         _logger.LogInformation($"GetProducts Response : {JsonConvert.SerializeObject(response, Formatting.None)}");
 
@@ -49,7 +49,7 @@ public class BalanceManagementService(ILogger<BalanceManagementService> _logger,
     {
         _logger.LogInformation($"GetUserBalance userId ");
 
-        BaseResponse<UserBalanceResponse> response = await GetResponse<UserBalanceResponse>("/api/balance", HttpMethod.Post);
+        BaseResponse<UserBalanceResponse> response = await GetResponse<UserBalanceResponse>("/api/balance", HttpMethod.Get);
 
         _logger.LogInformation($"GetUserBalance Response : {JsonConvert.SerializeObject(response, Formatting.None)}");
 

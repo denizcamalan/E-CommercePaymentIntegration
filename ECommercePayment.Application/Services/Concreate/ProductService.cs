@@ -56,9 +56,7 @@ public class ProductService : IProductService
 
             if (externalResponse.Success == true && externalResponse.Data is not null)
             {
-                var product = externalResponse.Data.ToProductResponse();
-                var list = new List<ProductResponse> { product };
-
+                var list = externalResponse.Data.Select(p => p.ToProductResponse()).ToList();
                 await _cacheService.SetAsync(CacheKeys.ProductsCacheKey, list, TimeSpan.FromMinutes(5));
 
                 response.Data = list;

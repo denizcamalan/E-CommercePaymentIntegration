@@ -11,5 +11,5 @@ public interface IBalanceManagementService
     Task<BaseResponse<PreOrderResponse>> PreOrder(PreOrderRequest request);
     Task<BaseResponse<CompleteResponse>> CompleteOrder(CompleteRequest request);
     Task<BaseResponse<CancelResponse>> CancelOrder(CancelRequest request);
-    Task<BaseResponse<ProductsResponse>> GetProducts();
+    Task<BaseResponse<List<ProductsResponse>>> GetProducts();
 }
