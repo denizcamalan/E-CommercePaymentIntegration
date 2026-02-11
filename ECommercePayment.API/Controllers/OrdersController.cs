@@ -1,4 +1,5 @@
 using ECommercePayment.Application.Services.Abstaract;
+using ECommercePayment.Application.Services.Identity;
 using ECommercePayment.Domain.DTOs.Request;
 using Microsoft.AspNetCore.Mvc;
 
@@ -7,6 +8,7 @@ namespace ECommercePayment.API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Produces("application/json")]
+[ECommerceIdentity] // Bearer Authentication gerekiyor
 public class OrdersController(IOrderService _orderService) : BaseController
 {
     [HttpPost]

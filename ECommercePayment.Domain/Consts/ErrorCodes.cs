@@ -12,4 +12,9 @@ public static class ErrorCodes
     public const string InsufficientStock = "InsufficientStock";
     public const string OrderAlreadyCompleted = "OrderAlreadyCompleted";
     public const string CancelOrderFailed = "CancelOrderFailed";
+    public const string AuthenticationFailed = "AuthenticationFailed";
+    public const string InvalidToken = "InvalidToken";
+    public const string TokenExpired = "TokenExpired";
+    public const string InternalServerError = "InternalServerError";
+    public const string ValidationFailed = "ValidationFailed";
 }
