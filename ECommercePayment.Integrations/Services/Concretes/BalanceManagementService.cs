@@ -7,11 +7,24 @@ using ECommercePayment.Integrations.BalanceManagement.Models.Response.Balance;
 using ECommercePayment.Integrations.BalanceManagement.Models.Response.Products;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Polly;
+using Polly.Retry;
 
 namespace ECommercePayment.Integrations.Services;
 
 public class BalanceManagementService(ILogger<BalanceManagementService> _logger, IHttpClientFactory _httpClientFactory, BalanceManagementSettings _bMSettings) : IBalanceManagementService
 {
+    private readonly AsyncRetryPolicy<HttpResponseMessage> _retryPolicy =
+        Policy<HttpResponseMessage>
+            .Handle<HttpRequestException>()
+            .OrResult(msg => (int)msg.StatusCode >= 500)
+            .WaitAndRetryAsync(
+                4,
+                retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
+                (outcome, timespan, retryCount, context) =>
+                {
+                    _logger.LogWarning("Retrying BalanceManagement request. Attempt {RetryCount}", retryCount);
+                });
     public async Task<BaseResponse<CancelResponse>> CancelOrder(CancelRequest request)
     {
         _logger.LogInformation($"CancelOrder Request : {JsonConvert.SerializeObject(request, Formatting.None)}");
@@ -86,8 +99,9 @@ public class BalanceManagementService(ILogger<BalanceManagementService> _logger,
 
             HttpClient httpClient = _httpClientFactory.CreateClient();
 
-            HttpResponseMessage result = await httpClient.SendAsync(request, cancellationToken);
-            
+            HttpResponseMessage result = await _retryPolicy.ExecuteAsync(ct =>
+            httpClient.PostAsync(url, new StringContent(payload, Encoding.UTF8, contentType), ct), cancellationToken);
+
             var body = await result.Content.ReadAsStringAsync();
 
             var response = new BaseResponse<Tout>();
@@ -105,7 +119,9 @@ public class BalanceManagementService(ILogger<BalanceManagementService> _logger,
             if (!result.IsSuccessStatusCode && string.IsNullOrEmpty(response.Error))
             {
                 response.Error = result.StatusCode.ToString();
-                response.Message = ErrorMesssages.AccessError;
+                response.Message = (int)result.StatusCode >= 500
+                    ? "Lütfen daha sonra tekrar deneyin."
+                    : ErrorMesssages.AccessError;
             }
 
             return response;
@@ -117,13 +133,13 @@ public class BalanceManagementService(ILogger<BalanceManagementService> _logger,
             return new BaseResponse<Tout>
             {
                 Error = ErrorMesssages.InternalService,
-                Message = ex.Message
+                Message = "Lütfen daha sonra tekrar deneyin."
             };
         }
 
     }
 
-    private async Task<BaseResponse<Tout>> GetResponse<Tout>(string address, HttpMethod method,string contentType = "application/json", bool isResponseConvert = true, CancellationToken cancellationToken = default)
+    private async Task<BaseResponse<Tout>> GetResponse<Tout>(string address, HttpMethod method, string contentType = "application/json", bool isResponseConvert = true, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -135,7 +151,8 @@ public class BalanceManagementService(ILogger<BalanceManagementService> _logger,
 
             HttpClient httpClient = _httpClientFactory.CreateClient();
 
-            HttpResponseMessage result = await httpClient.SendAsync(request, cancellationToken);
+            HttpResponseMessage result = await _retryPolicy
+                .ExecuteAsync(ct => httpClient.SendAsync(request, ct), cancellationToken);
 
             var body = await result.Content.ReadAsStringAsync();
 
@@ -154,7 +171,9 @@ public class BalanceManagementService(ILogger<BalanceManagementService> _logger,
             if (!result.IsSuccessStatusCode && string.IsNullOrEmpty(response.Error))
             {
                 response.Error = result.StatusCode.ToString();
-                response.Message = ErrorMesssages.AccessError;
+                response.Message = (int)result.StatusCode >= 500
+                    ? "Lütfen daha sonra tekrar deneyin."
+                    : ErrorMesssages.AccessError;
             }
 
             return response;
@@ -166,7 +185,7 @@ public class BalanceManagementService(ILogger<BalanceManagementService> _logger,
             return new BaseResponse<Tout>
             {
                 Error = ErrorMesssages.InternalService,
-                Message = ex.Message
+                Message = "Lütfen daha sonra tekrar deneyin."
             };
         }
 

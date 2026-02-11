@@ -140,7 +140,6 @@ namespace ECommercePayment.Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<string>("CancellationReason")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<DateTime?>("CancelledAt")

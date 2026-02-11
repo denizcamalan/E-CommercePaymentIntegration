@@ -49,7 +49,7 @@ namespace ECommercePayment.Infrastructure.Migrations
                     OrderStatus = table.Column<int>(type: "integer", nullable: false),
                     CompletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     CancelledAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    CancellationReason = table.Column<string>(type: "text", nullable: false),
+                    CancellationReason = table.Column<string>(type: "text", nullable: true),
                     Created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     CreatedBy = table.Column<string>(type: "text", nullable: false),
                     Modified = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),

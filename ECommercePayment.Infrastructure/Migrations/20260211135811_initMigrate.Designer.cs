@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ECommercePayment.Infrastructure.Migrations
 {
     [DbContext(typeof(EcommercePaymentDbContext))]
-    [Migration("20260211095407_initMigrate")]
+    [Migration("20260211135811_initMigrate")]
     partial class initMigrate
     {
         /// <inheritdoc />
@@ -143,7 +143,6 @@ namespace ECommercePayment.Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<string>("CancellationReason")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<DateTime?>("CancelledAt")
